@@ -1,0 +1,122 @@
+{
+  "VERSO": {
+    "nombre": "VERSO",
+    "juego_fav": "Minecraft",
+    "hobby": "Programación",
+    "chats": {
+      "chat_1788121158094": {
+        "id": "chat_1788121158094",
+        "titulo": "HOLAAA",
+        "juego": "Minecraft",
+        "creado": 1788121158.0943651,
+        "mensajes": [
+          {
+            "rol": "user",
+            "texto": "HOLAAA",
+            "timestamp": 1788121164.0991852
+          },
+          {
+            "rol": "model",
+            "texto": "¡Holaaa, VERSO! 😎🛠️\n\n¿Qué tal la última sesión de Minecraft? ¿Construyendo un nuevo portal a la nether o probando ese mod que te prometías dominar? Y en la zona de código, ¿algún script nuevo que te esté haciendo temblar la cabeza? ¡Cuéntame, que aquí estoy pa’ echarle un vistazo y, si necesitas, convertirlo en algo épico! 🚀✨",
+            "timestamp": 1788121165.0936267
+          },
+          {
+            "rol": "user",
+            "texto": "creemos un mod",
+            "timestamp": 1788121306.7526953
+          },
+          {
+            "rol": "model",
+            "texto": "¡Listo, VERSO! 🚀 Vamos a ponernos manos a la obra y convertir tu idea en un mod que haga que el mundo de Minecraft se rinda ante tus comandos.  \nAquí tienes una guía rápida y directa para arrancar con **Forge** (el más clásico) o **Fabric** (si quieres algo más liviano y con actualizaciones más rápidas). Elige la que te guste y ¡a construir!  \n\n---\n\n## 1️⃣ ¿Qué necesitas?\n\n| Herramienta | Por qué es importante | Descarga |\n|-------------|-----------------------|----------|\n| **Java Development Kit (JDK)** | El lenguaje de Minecraft y la mayoría de los mods está en Java. | <https://adoptium.net/> |\n| **IDE** (IntelliJ IDEA es el favorito de la comunidad) | Editor de código con soporte para Gradle, depuración y refactorización. | <https://www.jetbrains.com/idea/> |\n| **Gradle** (viene con el proyecto) | Sistema de construcción que compila y empaqueta tu mod. | Incluido en el scaffold |\n| **Forge/Fabric** (elige uno) | Plataforma que maneja la interacción con el juego. | <https://files.minecraftforge.net/> o <https://fabricmc.net/use/> |\n| **Git** (opcional, pero recomendado) | Control de versiones para tu código. | <https://git-scm.com/> |\n\n> **Tip**: Si eres nuevo en Java, revisa “Java Basics” en la documentación oficial antes de comenzar.\n\n---\n\n## 2️⃣ Escoge tu motor de modding\n\n| Motor | Pros | Contras | Versión recomendada |\n|-------|------|---------|---------------------|\n| **Forge** | Compatibilidad con la mayoría de los mods, comunidad enorme. | Más pesado, actualizaciones tardías. | 1.20.1 (última estable) |\n| **Fabric** | Ligero, actualizaciones rápidas, buen soporte para mods pequeños. | Menos mods de terceros disponibles. | 1.20.1 (última estable) |\n\n> **Recomendación**: Si tu mod será un bloque simple o un item, Fabric es más sencillo. Si quieres usar APIs de mods existentes (como *Tinker's Construct*), Forge es la opción.\n\n---\n\n## 3️⃣ Configura tu entorno\n\n### 3.1 Crear un proyecto base\n\n**Para Forge**  \n```bash\n# En la terminal\nmkdir MyFirstMod && cd MyFirstMod\ncurl -o forge-installer.jar https://media.forgecdn.net/files/431/792/forge-1.20.1-47.2.0-installer.jar\njava -jar forge-installer.jar --installClient\n# Luego abre IntelliJ y importa el proyecto (usa `build.gradle`)\n```\n\n**Para Fabric**  \n```bash\n# Usa la herramienta de scaffolding oficial\ncurl -L https://fabricmc.net/use/installer | bash\n# Sigue las instrucciones, selecciona la versión y el nombre del proyecto\n```\n\n### 3.2 Importa en IntelliJ\n\n1. Abre IntelliJ → *Open* → selecciona la carpeta del proyecto.  \n2. Cuando se pregunte, elige *Import Gradle project*.  \n3. Espera a que se resuelvan las dependencias (puede tardar un par de minutos).  \n\n¡Listo! Ahora puedes ver la estructura `src/main/java` y `src/main/resources`.\n\n---\n\n## 4️⃣ Tu primer mod: “Hola Mundo” (un nuevo bloque)\n\n### 4.1 Estructura básica\n\n```text\nsrc/main/java/com/tuusuario/modid/\n    ModMain.java\n    ModBlocks.java\nsrc/main/resources/\n    mods.toml (Forge) / fabric.mod.json (Fabric)\n    assets/modid/\n        blockstates/\n        models/\n        textures/\n```\n\n### 4.2 Código\n\n**ModMain.java**  \n```java\npackage com.tuusuario.modid;\n\nimport net.minecraftforge.fml.common.Mod;\nimport net.minecraftforge.eventbus.api.IEventBus;\nimport net.minecraftforge.eventbus.api.SubscribeEvent;\nimport net.minecraftforge.fml.event.lifecycle.FMLClientSetupEvent;\nimport net.minecraftforge.fml.event.lifecycle.FMLCommonSetupEvent;\n\n@Mod(ModMain.MODID)\npublic class ModMain {\n    public static final String MODID = \"hola_mundo\";\n\n    public ModMain() {\n        IEventBus bus = Mod.EventBusSubscriber.Bus.MOD.get().getEventBus();\n        bus.addListener(this::setup);\n        bus.addListener(this::doClientStuff);\n        ModBlocks.register();\n    }\n\n    private void setup(final FMLCommonSetupEvent event) {\n        // inicializaciones generales\n    }\n\n    private void doClientStuff(final FMLClientSetupEvent event) {\n        // configuraciones de cliente (modelos, renderers)\n    }\n}\n```\n\n**ModBlocks.java**  \n```java\npackage com.tuusuario.modid;\n\nimport net.minecraft.world.level.block.Block;\nimport net.minecraft.world.level.block.state.BlockBehaviour;\nimport net.minecraft.world.level.material.Material;\nimport net.minecraftforge.registries.DeferredRegister;\nimport net.minecraftforge.registries.ForgeRegistries;\nimport net.minecraftforge.registries.RegistryObject;\n\npublic class ModBlocks {\n    public static final DeferredRegister<Block> BLOCKS =\n            DeferredRegister.create(ForgeRegistries.BLOCKS, ModMain.MODID);\n\n    public static final RegistryObject<Block> BLOCK_HOLA = BLOCKS.register(\"bloque_hola\",\n        () -> new Block(BlockBehaviour.Properties.of(Material.STONE).strength(3.0f)));\n\n    public static void register() {\n        BLOCKS.register(ModMain.MODID);\n    }\n}\n```\n\n> **Nota**: Si usas Fabric, el patrón de registro cambia ligeramente (usas `FabricBlockRegistry`). El principio es el mismo.\n\n### 4.3 Añade el modelo y textura\n\n- **Textura**: `src/main/resources/assets/modid/textures/block/bloque_hola.png`  \n  (Crea una imagen PNG de 16x16, cualquier color que quieras, o pega una textura de referencia de Minecraft).  \n\n- **Modelo JSON**: `src/main/resources/assets/modid/models/block/bloque_hola.json`  \n  ```json\n  {\n    \"parent\": \"block/cube_all\",\n    \"textures\": {\n      \"all\": \"modid:block/bloque_hola\"\n    }\n  }\n  ```\n\n- **Blockstate**: `src/main/resources/assets/modid/blockstates/bloque_hola.json`  \n  ```json\n  {\n    \"variants\": {\n      \"\": { \"model\": \"modid:block/bloque_hola\" }\n    }\n  }\n  ```\n\n---\n\n## 5️⃣ Compila y prueba\n\n```bash\n./gradlew build\n```\n\nEl jar resultante estará en `build/libs/`. Copialo a la carpeta `mods` de tu instalación de Minecraft (Forge/Fabric).\n\n**¡Inicia Minecraft y busca tu bloque!**  \n- Puedes usar el comando `/give @p modid:bloque_hola` para probarlo rápidamente.  \n\n---\n\n## 6️⃣ Próximos pasos\n\n| Tema | Qué hacer | Enlace |\n|------|-----------|--------|\n| **Añadir un item** | Similar al bloque, pero con `Item` y `ItemStack`. | <https://fabricmc.net/wiki/tutorial:items> |\n| **Eventos y lógica** | Usa `@SubscribeEvent` para reaccionar a eventos de juego. | <https://docs.minecraftforge.net/en/latest/tutorials/eventbus/> |\n| **UI / GUIs** | Crea una pantalla con `Screen` y `Menu`. | <https://fabricmc.net/wiki/tutorial:gui> |\n| **Optimización** | Usa `DeferredRegister` y `LazyOptional` para cargar recursos de forma eficiente. | <https://docs.minecraftforge.net/en/latest/misc/optimizing/> |\n\n---\n\n## 7️⃣ Consejos de la comunidad\n\n1. **Lee los foros**: <https://www.minecraftforum.net/forums/mapping-and-modding-java-edition>  \n2. **Revisa el repositorio de ejemplo**: <https://github.com/ForgeGradle/ForgeGradle/tree/master/examples>  \n3. **Únete a Discord**: Busca canales de modding de Forge/Fabric y pregunta. La comunidad es súper activa.  \n\n---\n\n### 🎮 ¡Ahora tú!  \n¿Qué quieres que haga tu mod? ¿Un nuevo bloque con efecto de fuego, un item con un comportamiento único, o una mini‑aventura? Dime tu idea y te ayudo a pulir el código.  \n\n¡Vamos a hacer que el mundo de Minecraft se rinda ante tu genialidad! 💡🛠️",
+            "timestamp": 1788121309.2035718
+          },
+          {
+            "rol": "user",
+            "texto": "primero pensemos de q va a ser el mod",
+            "timestamp": 1788121477.8108943
+          },
+          {
+            "rol": "model",
+            "texto": "¡Claro, VERSO! 🤓  \nVamos a hacer una lluvia de ideas antes de pegarle la mano a la codificación.  \nA continuación tienes una lista de **tipos de mods** y algunas ideas concretas dentro de cada categoría.  \nElige lo que más te llame la atención o mezcla varios para crear algo único. ¡Listo, que la imaginación es la mejor herramienta de programación! 🚀\n\n---\n\n## 1️⃣ Mod de *nuevos bloques* + *herramientas*\n| Idea | ¿Qué haría? | ¿Por qué mola? |\n|------|-------------|----------------|\n| **Bloque “Piedra de Flux”** | Bloque que genera partículas de energía y produce energía al ser golpeado con cualquier herramienta. | Útil para generar energía en red de redstone. |\n| **Madera de “Cactus”** | Madera que se regenera sola cada 30 segundos. | Ahorra recursos y añade un toque de vida al mundo. |\n| **Bloque “Espejo de Netherscape”** | Refleja el Nether en el mundo normal. | Juego de puzzles y estética cool. |\n\n---\n\n## 2️⃣ Mod de *nuevos items* + *recetas*\n| Idea | ¿Qué haría? | ¿Por qué mola? |\n|------|-------------|----------------|\n| **Cuchara de Diamante** | Un cuchara que permite “cocinar” alimentos en cualquier bloque sólido. | Juego de cocina y exploración de recetas. |\n| **Poción “Invisibilidad Temporal”** | Poción que te hace invisible pero con un “lag” divertido que hace que aparezcas en el aire. | Diversión para raids y trucos de PvP. |\n| **Escudo “Portal”** | Escudo que abre un portal pequeño a tu ubicación cuando te golpean. | ¡Salidas de emergencia improvisadas! |\n\n---\n\n## 3️⃣ Mod de *nuevos mobs* + *comportamiento*\n| Idea | ¿Qué haría? | ¿Por qué mola? |\n|------|-------------|----------------|\n| **Zombi “Programador”** | Zombi que escribe códigos en bloques cuando se acerca a un jugador. | Humor y mini‑puzzles de “¿qué código escribe?”. |\n| **Cangrejo de “Redstone”** | Cangrejo que lleva cables de redstone en su cola y los reparan automáticamente. | Automatización ligera. |\n| **Dragón “Pixel”** | Dragón que deja rastros de píxeles (como en Minecraft 1.7.10) y lanza bloques de colores. | Nostalgia + efecto visual. |\n\n---\n\n## 4️⃣ Mod de *nuevas mecánicas* + *interacción*\n| Idea | ¿Qué haría? | ¿Por qué mola? |\n|------|-------------|----------------|\n| **Sistema de “Tiempo”** | Añade un reloj interno que afecta la generación de mobs, el crecimiento de cultivos y la aparición de bloques. | Introduce estrategia y planificación. |\n| **“Hacky‑Tools”** | Herramientas que pueden “hackear” bloques específicos (por ejemplo, romper bloques de obsidiana sin explosiones). | Facilita tareas repetitivas con toque de “hack”. |\n| **“Desafío de la Redstone”** | Módulo que genera laberintos de redstone aleatorios y los resuelve automáticamente con un algoritmo. | Buen ejercicio de lógica y AI. |\n\n---\n\n## 5️⃣ Mod de *cosas divertidas* + *cosméticos*\n| Idea | ¿Qué haría? | ¿Por qué mola? |\n|------|-------------|----------------|\n| **“Música de Bloques”** | Cada bloque tiene un tono musical único y al pulsar se crea una melodía. | Música improvisada en el juego. |\n| **“Camisas de Personaje”** | Cambia la textura del jugador al usar bloques especiales. | Personalización rápida y divertida. |\n| **“Cubo de la Suerte”** | Al romperlo, lanza una serie de eventos aleatorios: lluvia de diamantes, caída de bloques, aparición de mobs extraños. | ¡Sorpresas en cada juego! |\n\n---\n\n## 6️⃣ Ideas de *juego de rol* + *misiones*\n| Idea | ¿Qué haría? | ¿Por qué mola? |\n|------|-------------|----------------|\n| **“Cazador de Relicarios”** | Módulo que genera reliquias con misiones que debes completar para desbloquear habilidades. | Añade profundidad y objetivos a largo plazo. |\n| **“Alianzas de Clanes”** | Sistema donde los jugadores pueden crear clanes y compartir recursos. | Fomenta la cooperación y la comunidad. |\n\n---\n\n### Preguntas rápidas para afinar la idea\n\n1. **¿Qué tipo de experiencia te gustaría que los jugadores vivan?** (Exploración, construcción, combate, humor, etc.)  \n2. **¿Quieres que el mod sea más *simple* (un bloque, un item) o más *complejo* (sistema completo, mobs, lógica)?**  \n3. **¿Hay algún *tema* que te inspire?** (Ciencia ficción, medieval, futurista, retro, etc.)  \n4. **¿Quieres que el mod sea *modular* para que otros modders lo integren fácilmente?**  \n\nDame tu respuesta y armamos la visión final. ¡Después de eso, nos ponemos a codificar! 🎮✨",
+            "timestamp": 1788121479.9995172
+          },
+          {
+            "rol": "user",
+            "texto": "mas como el 4 o 5 o 3 o 2 o 1",
+            "timestamp": 1788121616.7962663
+          },
+          {
+            "rol": "model",
+            "texto": "¡Perfecto, VERSO! 🚀  \nVoy a armarte un “brief” rápido con ideas que encajan en las categorías 4, 5, 3, 2 o 1. Elige la que más te inspire y nos ponemos a codificar.  \n\n---\n\n## 1️⃣ Mod de **Nuevas Mecánicas** (4)  \n**Idea:** **“Cronos‑Clock”** – Un reloj que controla el ritmo del mundo.  \n- **Qué hace:**  \n  - El tiempo (día‑noche) se acelera o ralentiza según la zona donde estés (por ejemplo, 5× más rápido en biomas de montaña, 0.5× en junglas).  \n  - Los mobs aparecen en “picos” de tiempo: zombies a las 10 pm, husk a las 2 am, etc.  \n  - Añade un *“Temporal Mod”* que permita a los jugadores cambiar la velocidad con un item (p. ej. “Reloj de Cristal”).  \n- **Por qué mola:**  \n  - Estrategia de construcción (plantar cultivos en “horas doradas”).  \n  - PvP con “fases” de tiempo.  \n  - Se puede combinar con redstone (el reloj envía señales al cambiar de fase).  \n\n## 2️⃣ Mod de **Cosméticos y Diversión** (5)  \n**Idea:** **“Música de Bloques”** – Cada bloque suena.  \n- **Qué hace:**  \n  - Cada bloque tiene un tono único (p. ej. piedra → “do”, madera → “re”).  \n  - Al pulsar un bloque con el *“Piano de Bloques”* (un item que aparece en la mesa de crafting), el jugador puede “construir” una canción arrastrando bloques.  \n  - Se generan “tune‑effects” (vibraciones, partículas) cuando la canción se reproduce.  \n- **Por qué mola:**  \n  - Personalización sonora sin necesidad de mods de audio externos.  \n  - Se puede usar para crear “pistas” de minijuegos.  \n  - ¡Es puro entretenimiento visual y auditivo!  \n\n## 3️⃣ Mod de **Nuevos Mobs** (3)  \n**Idea:** **“Zombi Programador”** – Zombi con humor y lógica.  \n- **Qué hace:**  \n  - Cuando se acerca a un jugador, escribe código en bloques de “pizarra” (un bloque especial).  \n  - El código es pseudo‑Java que crea un *“puzzle”*: el jugador debe resolverlo para que el zombi se aleje (o para ganar un drop).  \n  - Tiene “skins” de distintas épocas (p. ej. zombi 1.12, zombi 1.18).  \n- **Por qué mola:**  \n  - Combina combate con mini‑puzzles.  \n  - Humor de “programador” que encaja con tu hobby.  \n  - Fácil de ampliar (añadir más mobs con lógica).  \n\n## 4️⃣ Mod de **Items y Recetas** (2)  \n**Idea:** **“Cuchara de Diamante”** – Cocina en cualquier bloque.  \n- **Qué hace:**  \n  - Cuchara que permite “cocinar” alimentos en bloques sólidos (p. ej. piedra, tierra).  \n  - Al usarla, aparece un “efecto” de fuego que “cocina” el alimento (cambia su estado a “cocinado”).  \n  - Se puede combinar con recetas de “tapas” (p. ej. “tapas de carne cruda” → “tapas de carne cocida”).  \n- **Por qué mola:**  \n  - Añade variedad a la cocina sin romper el balance.  \n  - Interacción divertida con el entorno.  \n\n## 5️⃣ Mod de **Bloques y Herramientas** (1)  \n**Idea:** **“Piedra de Flux”** – Bloque que genera energía.  \n- **Qué hace:**  \n  - Bloque que emite partículas de energía.  \n  - Al golpearlo con cualquier herramienta, se genera un “punto de energía” que se puede canalizar a un circuito de redstone.  \n  - Se puede usar como fuente de energía alternativa a la red de redstone convencional.  \n- **Por qué mola:**  \n  - Útil para construcciones de redstone avanzadas.  \n  - Añade un toque de “magia” al mundo.  \n\n---\n\n### ¿Cuál te llama más la atención?  \n- 1️⃣: Piedra de Flux  \n- 2️⃣: Cuchara de Diamante  \n- 3️⃣: Zombi Programador  \n- 4️⃣: Cronos‑Clock  \n- 5️⃣: Música de Bloques  \n\nDime cuál de estas ideas (o una combinación de ellas) te gustaría llevar a cabo y me pongo a desglosar la arquitectura, las dependencias y el primer código. ¡A por ello! 🎮🛠️",
+            "timestamp": 1788121619.7489522
+          }
+        ]
+      },
+      "chat_1788392522028": {
+        "id": "chat_1788392522028",
+        "titulo": "hola",
+        "juego": "Minecraft",
+        "creado": 1788392522.0285838,
+        "mensajes": [
+          {
+            "rol": "user",
+            "texto": "hola",
+            "timestamp": 1788392524.3681881
+          },
+          {
+            "rol": "model",
+            "texto": "🎮 ¡Vaya! VERSO AI se quedó sin pociones de energía por mandar muchos mensajes seguidos. Espera unos segundos y vuelve a tirar el comando, crack. ⚡",
+            "timestamp": 1788392525.0141683
+          },
+          {
+            "rol": "user",
+            "texto": "hola",
+            "timestamp": 1788392558.4960191
+          },
+          {
+            "rol": "model",
+            "texto": "¡Hey, VERSO! 👋🏼  \n¿Qué onda? ¿Listo para ponerte a crear un nuevo bastión en Minecraft, hackear un mod con tu código favorito o simplemente echar una partida con tus amigos? 🚀🛠️\n\nSi tienes alguna idea loca para un proyecto de programación que quieras probar en el juego, dime y vemos cómo darle vida. ¡A romper bloques y líneas de código! 🎮💻",
+            "timestamp": 1788392559.223039
+          }
+        ]
+      }
+    },
+    "notebooks": []
+  },
+  "ALBERTO": {
+    "nombre": "ALBERTO",
+    "juego_fav": "Roblox",
+    "hobby": "Programación",
+    "chats": {
+      "chat_1788121198071": {
+        "id": "chat_1788121198071",
+        "titulo": "hola, amigo",
+        "juego": "Roblox",
+        "creado": 1788121198.071751,
+        "mensajes": [
+          {
+            "rol": "user",
+            "texto": "hola, amigo",
+            "timestamp": 1788121204.1017454
+          },
+          {
+            "rol": "model",
+            "texto": "¡Hola, Albert! 👋 ¿Qué onda? ¿Listo para una nueva aventura en Roblox o tienes algún proyecto de programación que necesite un toque de magia gamer? 🚀\n\nSi quieres charlar de algún script que te esté dando problemas, un nuevo mod en Minecraft, o simplemente quieres compartir tu última creación, aquí estoy. ¡Dime qué está pasando y vamos a darle caña! 🎮💻",
+            "timestamp": 1788121206.031243
+          },
+          {
+            "rol": "user",
+            "texto": "q juego de roblox me recomiendas prbar",
+            "timestamp": 1788121232.1402605
+          },
+          {
+            "rol": "model",
+            "texto": "¡Qué onda, Albert! 😎 Si buscas algo que te haga sentir como el rey del sandbox, aquí van unas joyas de Roblox que no puedes dejar de probar:\n\n| # | Juego | Por qué lo recomiendas | Tips de “gamers” |\n|---|-------|------------------------|------------------|\n| 1 | **Jailbreak** | Acción‑táctico al estilo “escape‑the‑jail”, con carreras de coches y tiroteos épicos. | ¡No subestimes el “helicóptero” en la zona de la policía! Salir de la zona de la cárcel con el coche de la policía puede darte un boost de velocidad. |\n| 2 | **Brookhaven 🏡** | Simulación de vida con estilo de “The Sims” pero con la libertad de Roblox. | Busca los “secrets” de los coches; a veces el dueño original te deja un tesoro de objetos de colección. |\n| 3 | **Arsenal** | FPS rápido con cambios de armas instantáneos. | Practica el “quick‑switch” con el número 1‑5 para no perder el ritmo. |\n| 4 | **Murder Mystery 2** | Juego de deducción, ¡y la tensión es real! | Mantén tu “spy‑camera” activada para ver quién te está siguiendo. |\n| 5 | **Tower of Hell** | Obstacle course (obby) con retos de parkour. | Usa el “crouch” y el “jump‑crouch” combo para saltar los obstáculos sin caer. |\n| 6 | **Piggy** | Survival horror con un toque de “Minecraft”. | Si te quedas atascado, revisa los “hints” en la esquina superior izquierda; a veces hay pistas ocultas. |\n| 7 | **Bloxburg** | Construcción y simulación de vida con economía. | Aprovecha la “economía” del juego: vende tus muebles para ganar dinero y mejorar tu casa. |\n| 8 | **Adopt Me!** | Social, crianza de mascotas y decoración. | Los “farming” de regalos pueden ser una forma de ganar “gems” para comprar decoraciones raras. |\n| 9 | **Murder Mystery 2** | Juego de deducción, ¡y la tensión es real! | Mantén tu “spy‑camera” activada para ver quién te está siguiendo. |\n| 10 | **Build a Boat for Treasure** | Construcción de barcos y aventuras submarinas. | Usa el “glider” para explorar el fondo del mar sin hundirte. |\n\n---\n\n### ¿Qué buscar cuando eliges un juego?\n\n1. **Gameplay**: ¿Te gusta la acción, la simulación o la estrategia?  \n2. **Comunidad**: Busca servidores con buen chat, sin trolls.  \n3. **Actualizaciones**: Un juego activo significa más eventos y contenido nuevo.  \n\n---\n\n### Un toque de programación\n\nSi quieres ir más allá y crear tu propio juego (o simplemente hacer un mod), revisa estos recursos:\n\n- **Roblox Studio**: La herramienta oficial de desarrollo.  \n- **Scripting en Lua**: El lenguaje que Roblox usa.  \n- **Tutoriales**: “Roblox Developer Hub” y “DevForum” son minas de oro.  \n- **Proyecto**: Empieza con un simple “Hello World” y luego haz un script que haga que tu avatar se desplace al pulsar la tecla “F”. ¡La práctica es la mejor forma de aprender!  \n\n---\n\n### ¡Vamos a jugar!\n\n¿Te animas a probar alguno? Dime cuál te llama la atención y puedo darte un mini‑tutorial de cómo empezar o un par de hacks para mejorar tu juego. 🚀",
+            "timestamp": 1788121233.4998064
+          }
+        ]
+      }
+    },
+    "notebooks": []
+  }
+}
