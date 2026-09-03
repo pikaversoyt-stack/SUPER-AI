@@ -1,0 +1,845 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VERSO AI</title>
+    <!-- Markdown Parser & Highlight.js -->
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/tokyo-night-dark.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+    <style>
+        :root {
+            --bg-primary: #121214;
+            --bg-secondary: #1a1a1e;
+            --bg-chat: #222227;
+            --accent-purple: #7209b7;
+            --accent-hover: #5c0696;
+            --text-color: #f1f1f1;
+            --text-muted: #a0a0aa;
+            --border-color: #2d2d35;
+        }
+
+        /* Temas de colores de acento */
+        body.theme-purple { --accent-purple: #7209b7; --accent-hover: #5c0696; }
+        body.theme-neon { --accent-purple: #00f5d4; --accent-hover: #00bbf9; }
+        body.theme-crimson { --accent-purple: #f72585; --accent-hover: #b5179e; }
+        body.theme-emerald { --accent-purple: #10b981; --accent-hover: #059669; }
+
+        * {
+            box-sizing: border-box;
+            margin: 0; padding: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        body {
+            background-color: var(--bg-primary);
+            color: var(--text-color);
+            display: flex;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        .modal-overlay {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0, 0, 0, 0.85);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+
+        .modal-card {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            padding: 30px;
+            border-radius: 12px;
+            width: 360px;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .input-group {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+
+        .input-group label {
+            font-size: 0.85rem;
+            color: var(--text-muted);
+        }
+
+        .input-group input, .input-group select {
+            background: var(--bg-primary);
+            border: 1px solid var(--border-color);
+            padding: 10px;
+            border-radius: 6px;
+            color: #fff;
+            outline: none;
+        }
+
+        .btn-submit {
+            background: var(--accent-purple);
+            color: #fff;
+            border: none;
+            padding: 12px;
+            border-radius: 6px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        .btn-submit:hover { background: var(--accent-hover); }
+
+        .sidebar {
+            width: 280px;
+            background: var(--bg-secondary);
+            border-right: 1px solid var(--border-color);
+            display: flex;
+            flex-direction: column;
+            padding: 15px;
+            gap: 12px;
+        }
+
+        .logo {
+            font-size: 1.4rem;
+            font-weight: bold;
+            color: #fff;
+        }
+        .logo span { color: var(--accent-purple); }
+
+        .search-chats {
+            background: var(--bg-primary);
+            border: 1px solid var(--border-color);
+            padding: 8px 10px;
+            border-radius: 6px;
+            color: #fff;
+            font-size: 0.85rem;
+            outline: none;
+            width: 100%;
+        }
+
+        .btn-new-chat {
+            background: var(--bg-primary);
+            border: 1px solid var(--border-color);
+            color: #fff;
+            padding: 10px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 500;
+            text-align: left;
+            transition: border-color 0.2s;
+        }
+        .btn-new-chat:hover { border-color: var(--accent-purple); }
+
+        .nav-section {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            flex: 1;
+            overflow-y: auto;
+        }
+
+        .nav-title {
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            color: var(--text-muted);
+        }
+
+        .chat-item-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px 10px;
+            border-radius: 6px;
+            cursor: pointer;
+            color: var(--text-muted);
+            transition: background 0.2s, color 0.2s;
+        }
+        .chat-item-row.active, .chat-item-row:hover {
+            background: var(--bg-primary);
+            color: #fff;
+        }
+
+        .chat-title-text {
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            max-width: 150px;
+            font-size: 0.88rem;
+            flex: 1;
+        }
+
+        .chat-actions { display: flex; gap: 4px; }
+
+        .btn-icon {
+            background: none;
+            border: none;
+            color: var(--text-muted);
+            cursor: pointer;
+            font-size: 0.8rem;
+            padding: 2px 4px;
+            border-radius: 4px;
+        }
+        .btn-icon:hover { color: #fff; background: var(--border-color); }
+
+        .main-content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .topbar {
+            height: 60px;
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 20px;
+            background: var(--bg-secondary);
+        }
+
+        .mode-selector {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+        }
+
+        .mode-btn {
+            background: var(--bg-primary);
+            border: 1px solid var(--border-color);
+            color: var(--text-muted);
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .mode-btn.active {
+            background: var(--accent-purple);
+            color: #fff;
+            border-color: var(--accent-purple);
+        }
+
+        /* Selector rápido de Personalidad en Topbar */
+        .sysprompt-select {
+            background: var(--bg-primary);
+            border: 1px solid var(--border-color);
+            color: var(--text-color);
+            padding: 5px 10px;
+            border-radius: 6px;
+            font-size: 0.8rem;
+            outline: none;
+            cursor: pointer;
+        }
+
+        .theme-picker {
+            display: flex;
+            gap: 6px;
+            align-items: center;
+            margin-left: 6px;
+            padding-left: 6px;
+            border-left: 1px solid var(--border-color);
+        }
+
+        .theme-circle {
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            border: 2px solid transparent;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+        .theme-circle:hover { transform: scale(1.15); }
+
+        .user-info {
+            display: flex;
+            gap: 12px;
+            font-size: 0.85rem;
+            color: var(--text-muted);
+            align-items: center;
+        }
+
+        .chat-container {
+            flex: 1;
+            padding: 20px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .message {
+            max-width: 80%;
+            padding: 12px 16px;
+            border-radius: 10px;
+            font-size: 0.95rem;
+            line-height: 1.5;
+            position: relative;
+        }
+
+        .user-message {
+            align-self: flex-end;
+            background: var(--accent-purple);
+            color: #fff;
+        }
+
+        .model-message {
+            align-self: flex-start;
+            background: var(--bg-chat);
+            border: 1px solid var(--border-color);
+        }
+
+        .model-message pre {
+            background: #13141c;
+            padding: 12px;
+            border-radius: 8px;
+            overflow-x: auto;
+            position: relative;
+            margin: 10px 0;
+            border: 1px solid var(--border-color);
+        }
+
+        .model-message code {
+            font-family: 'Consolas', monospace;
+            font-size: 0.88rem;
+        }
+
+        .code-toolbar {
+            position: absolute;
+            top: 6px;
+            right: 6px;
+            display: flex;
+            gap: 5px;
+        }
+
+        .action-btn {
+            background: var(--border-color);
+            color: #fff;
+            border: none;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 0.7rem;
+            cursor: pointer;
+        }
+        .action-btn:hover { background: var(--accent-purple); }
+
+        .msg-footer {
+            display: flex;
+            gap: 10px;
+            margin-top: 8px;
+            align-items: center;
+            border-top: 1px solid rgba(255,255,255,0.05);
+            padding-top: 6px;
+        }
+
+        .msg-footer button {
+            background: none;
+            border: none;
+            color: var(--text-muted);
+            cursor: pointer;
+            font-size: 0.8rem;
+            transition: color 0.2s;
+        }
+        .msg-footer button:hover { color: #fff; }
+        .msg-footer button.active-thumb { color: var(--accent-purple); }
+
+        /* Modal Preview */
+        .preview-modal {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.8);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 2000;
+        }
+        .preview-box {
+            background: #fff; width: 80%; height: 80%; border-radius: 8px; display: flex; flex-direction: column; overflow: hidden;
+        }
+        .preview-header {
+            background: var(--bg-secondary); color: #fff; padding: 10px 15px; display: flex; justify-content: space-between; align-items: center;
+        }
+        .preview-header button {
+            background: #f72585; border: none; color: #fff; padding: 4px 10px; border-radius: 4px; cursor: pointer;
+        }
+        .preview-box iframe { flex: 1; border: none; background: #fff; }
+
+        .input-area {
+            padding: 15px 20px;
+            background: var(--bg-secondary);
+            border-top: 1px solid var(--border-color);
+            display: flex;
+            gap: 10px;
+        }
+
+        .input-area input {
+            flex: 1;
+            background: var(--bg-primary);
+            border: 1px solid var(--border-color);
+            padding: 12px 15px;
+            border-radius: 8px;
+            color: #fff;
+            outline: none;
+        }
+
+        .btn-send {
+            background: var(--accent-purple);
+            border: none;
+            color: #fff;
+            width: 45px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 1.1rem;
+            transition: background 0.2s;
+        }
+        .btn-send:hover { background: var(--accent-hover); }
+    </style>
+</head>
+<body>
+
+    <!-- Modal Login (Solo Usuario, Juego y Hobby) -->
+    <div class="modal-overlay" id="modal-login">
+        <div class="modal-card">
+            <h2>VERSO AI</h2>
+            <div class="input-group">
+                <label>Nombre de Usuario</label>
+                <input type="text" id="input-username" placeholder="Ingresa tu nombre...">
+            </div>
+            <div class="input-group">
+                <label>Juego Favorito</label>
+                <input type="text" id="input-juego" value="Minecraft">
+            </div>
+            <div class="input-group">
+                <label>Hobby</label>
+                <input type="text" id="input-hobby" value="Programación">
+            </div>
+            <button class="btn-submit" onclick="guardarLogin()">Entrar</button>
+        </div>
+    </div>
+
+    <!-- Modal Vista Previa en Vivo -->
+    <div class="preview-modal" id="modal-preview">
+        <div class="preview-box">
+            <div class="preview-header">
+                <span>⚡ Vista Previa en Vivo (Sandbox)</span>
+                <button onclick="cerrarPreview()">Cerrar ✕</button>
+            </div>
+            <iframe id="preview-iframe"></iframe>
+        </div>
+    </div>
+
+    <div class="sidebar">
+        <div class="logo">VERSO <span>AI</span></div>
+        <input type="text" class="search-chats" id="search-input" placeholder="🔍 Buscar en chats..." oninput="filtrarChats()">
+        <button class="btn-new-chat" onclick="crearNuevoChat()">+ Nuevo Chat</button>
+
+        <div class="nav-section">
+            <span class="nav-title">CHATS GUARDADOS</span>
+            <div id="lista-chats"></div>
+        </div>
+    </div>
+
+    <div class="main-content">
+        <div class="topbar">
+            <div class="mode-selector">
+                <button class="mode-btn active" id="mode-Gaming" onclick="setModo('Gaming')">🎮 Gaming</button>
+                <button class="mode-btn" id="mode-Dev" onclick="setModo('Dev')">💻 Dev</button>
+                <button class="mode-btn" id="mode-Creativo" onclick="setModo('Creativo')">⚡ Creativo</button>
+                
+                <!-- Selector rápido de Personalidad (System Prompt) -->
+                <select class="sysprompt-select" id="select-sysprompt" onchange="cambiarSystemPrompt(this.value)" title="Personalidad de la IA">
+                    <option value="Asistente experto, directo y técnico.">🤖 Experto Técnico</option>
+                    <option value="Amigable, entusiasta, gamer y creativo.">🎮 Gamer & Creativo</option>
+                    <option value="Programador senior especializado en web y motores de juegos.">💻 Programador Senior</option>
+                    <option value="Creativo minimalista enfocado en diseño UI/UX y estética.">✨ Diseñador UI/UX</option>
+                </select>
+
+                <!-- Selector de Temas Visuales -->
+                <div class="theme-picker">
+                    <div class="theme-circle" style="background: #7209b7;" onclick="cambiarTema('purple')" title="Morado"></div>
+                    <div class="theme-circle" style="background: #00f5d4;" onclick="cambiarTema('neon')" title="Neón"></div>
+                    <div class="theme-circle" style="background: #f72585;" onclick="cambiarTema('crimson')" title="Crimson"></div>
+                    <div class="theme-circle" style="background: #10b981;" onclick="cambiarTema('emerald')" title="Esmeralda"></div>
+                </div>
+            </div>
+
+            <div class="user-info">
+                <span id="display-user">👤 ---</span>
+                <button class="mode-btn" onclick="cambiarUsuario()">Cambiar User</button>
+            </div>
+        </div>
+
+        <div class="chat-container" id="chat-messages"></div>
+
+        <div class="input-area">
+            <input type="text" id="user-input" placeholder="Escribe tu consulta para VERSO AI..." onkeypress="if(event.key==='Enter') enviarMensaje(event)">
+            <button class="btn-send" onclick="enviarMensaje(event)">➔</button>
+        </div>
+    </div>
+
+    <script>
+        let usuarioActual = null;
+        let juegoActivo = "Minecraft";
+        let hobbyActivo = "Programación";
+        let systemPromptActual = "Asistente experto, directo y técnico.";
+        let chatActualId = null;
+        let modoActivo = "Gaming";
+        let listaChatsCache = {};
+        let utteranceActual = null;
+
+        window.addEventListener('DOMContentLoaded', () => {
+            const temaGuardado = localStorage.getItem('verso_theme') || 'purple';
+            cambiarTema(temaGuardado);
+
+            const sesionGuardada = localStorage.getItem('verso_session');
+            if (sesionGuardada) {
+                try {
+                    const data = JSON.parse(sesionGuardada);
+                    if (data && data.user_id && data.user_id !== "undefined") {
+                        iniciarSesionConDatos(data.user_id, data.juego || "Minecraft", data.hobby || "Programación");
+                        return;
+                    }
+                } catch(e) { console.error(e); }
+            }
+            document.getElementById('modal-login').style.display = 'flex';
+        });
+
+        function cambiarTema(nombreTema) {
+            document.body.className = `theme-${nombreTema}`;
+            localStorage.setItem('verso_theme', nombreTema);
+        }
+
+        function setModo(modo) {
+            modoActivo = modo;
+            document.querySelectorAll('.mode-btn').forEach(btn => {
+                if(btn.id.startsWith('mode-')) btn.classList.remove('active');
+            });
+            const activeBtn = document.getElementById(`mode-${modo}`);
+            if (activeBtn) activeBtn.classList.add('active');
+        }
+
+        function cambiarSystemPrompt(valor) {
+            systemPromptActual = valor;
+            localStorage.setItem('verso_sysprompt', valor);
+        }
+
+        function guardarLogin() {
+            const userId = document.getElementById('input-username').value.trim();
+            const juego = document.getElementById('input-juego').value.trim() || 'Minecraft';
+            const hobby = document.getElementById('input-hobby').value.trim() || 'Programación';
+
+            if (!userId) {
+                alert("Por favor ingresa un nombre de usuario.");
+                return;
+            }
+            iniciarSesionConDatos(userId, juego, hobby);
+        }
+
+        function iniciarSesionConDatos(userId, juego, hobby) {
+            usuarioActual = userId;
+            juegoActivo = juego;
+            hobbyActivo = hobby;
+
+            const promptGuardado = localStorage.getItem('verso_sysprompt');
+            if (promptGuardado) {
+                systemPromptActual = promptGuardado;
+                document.getElementById('select-sysprompt').value = promptGuardado;
+            }
+
+            localStorage.setItem('verso_session', JSON.stringify({
+                user_id: userId, juego: juego, hobby: hobby
+            }));
+
+            document.getElementById('display-user').innerText = `👤 ${usuarioActual}`;
+            document.getElementById('modal-login').style.display = 'none';
+            cargarListaChats();
+        }
+
+        function cambiarUsuario() {
+            document.getElementById('modal-login').style.display = 'flex';
+        }
+
+        function cargarListaChats() {
+            if (!usuarioActual) return;
+
+            fetch(`/api/obtener_chats?user_id=${usuarioActual}`)
+            .then(res => res.json())
+            .then(chats => {
+                listaChatsCache = chats || {};
+                renderizarListaChats(listaChatsCache);
+            })
+            .catch(() => {
+                if (!chatActualId) crearNuevoChat();
+            });
+        }
+
+        function renderizarListaChats(chats) {
+            const contenedor = document.getElementById('lista-chats');
+            contenedor.innerHTML = '';
+            const keys = Object.keys(chats);
+
+            if (keys.length === 0) {
+                if (!chatActualId) crearNuevoChat();
+                return;
+            }
+
+            keys.forEach((id) => {
+                const c = chats[id];
+                const div = document.createElement('div');
+                div.className = `chat-item-row ${id === chatActualId ? 'active' : ''}`;
+                
+                div.innerHTML = `
+                    <span class="chat-title-text" onclick="seleccionarChat('${id}')">${c.titulo || 'Conversación'}</span>
+                    <div class="chat-actions">
+                        <button class="btn-icon" title="Exportar" onclick="exportarChat('${id}', event)">💾</button>
+                        <button class="btn-icon" title="Borrar" onclick="borrarChat('${id}', event)">🗑️</button>
+                    </div>
+                `;
+                contenedor.appendChild(div);
+            });
+
+            if (!chatActualId || !chats[chatActualId]) {
+                seleccionarChat(keys[keys.length - 1]);
+            }
+        }
+
+        function filtrarChats() {
+            const query = document.getElementById('search-input').value.toLowerCase();
+            const filtrados = {};
+            Object.keys(listaChatsCache).forEach(id => {
+                const chat = listaChatsCache[id];
+                if ((chat.titulo || '').toLowerCase().includes(query)) {
+                    filtrados[id] = chat;
+                }
+            });
+            renderizarListaChats(filtrados);
+        }
+
+        function seleccionarChat(chatId) {
+            chatActualId = chatId;
+            cargarListaChats();
+
+            fetch(`/api/obtener_mensajes?user_id=${usuarioActual}&chat_id=${chatId}`)
+            .then(res => res.json())
+            .then(mensajes => {
+                const chatBox = document.getElementById('chat-messages');
+                chatBox.innerHTML = '';
+
+                if (!mensajes || mensajes.length === 0) {
+                    chatBox.innerHTML = `<div class="message model-message">¡Hola ${usuarioActual}! ⚡ Listo para trabajar en ${juegoActivo}. ¿En qué te ayudo hoy?</div>`;
+                    return;
+                }
+
+                mensajes.forEach(m => {
+                    renderizarMensaje(m.rol === 'user' ? 'user' : 'model', m.texto);
+                });
+                chatBox.scrollTop = chatBox.scrollHeight;
+            });
+        }
+
+        function crearNuevoChat() {
+            if (!usuarioActual) return;
+
+            fetch('/api/nuevo_chat', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ user_id: usuarioActual, juego: juegoActivo, titulo: 'Nueva Conversación' })
+            })
+            .then(res => res.json())
+            .then(chat => {
+                chatActualId = chat.id;
+                cargarListaChats();
+                seleccionarChat(chat.id);
+            });
+        }
+
+        function borrarChat(chatId, event) {
+            if (event) event.stopPropagation();
+            fetch('/api/borrar_chat', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ user_id: usuarioActual, chat_id: chatId })
+            }).then(() => {
+                if (chatActualId === chatId) chatActualId = null;
+                cargarListaChats();
+            });
+        }
+
+        function exportarChat(chatId, event) {
+            if (event) event.stopPropagation();
+            fetch(`/api/obtener_mensajes?user_id=${usuarioActual}&chat_id=${chatId}`)
+            .then(res => res.json())
+            .then(mensajes => {
+                let texto = `# HISTORIAL DE CHAT - VERSO AI\nUsuario: ${usuarioActual}\n\n`;
+                (mensajes || []).forEach(m => {
+                    texto += `**[${m.rol.toUpperCase()}]**: ${m.texto}\n\n---\n\n`;
+                });
+                const blob = new Blob([texto], { type: 'text/markdown' });
+                const a = document.createElement('a');
+                a.href = URL.createObjectURL(blob);
+                a.download = `chat_${usuarioActual}_${chatId}.md`;
+                a.click();
+            });
+        }
+
+        function renderizarMensaje(tipo, texto) {
+            const chatBox = document.getElementById('chat-messages');
+            const div = document.createElement('div');
+            div.className = `message ${tipo === 'user' ? 'user-message' : 'model-message'}`;
+
+            if (tipo === 'model') {
+                // Filtro extra de seguridad en el cliente por si llega un error 429 técnico de la API
+                if (texto.includes('429') || texto.toLowerCase().includes('quota exceeded')) {
+                    texto = "⚡ ¡Vaya! Me he quedado sin energía momentáneamente (límite de la cuota gratuita de la API alcanzado). Espera unos segundos y vuelve a enviarme un mensaje.";
+                }
+
+                div.innerHTML = marked.parse(texto);
+
+                div.querySelectorAll('pre').forEach(pre => {
+                    const codeText = pre.querySelector('code').innerText;
+                    const toolbar = document.createElement('div');
+                    toolbar.className = 'code-toolbar';
+
+                    const copyBtn = document.createElement('button');
+                    copyBtn.className = 'action-btn';
+                    copyBtn.innerText = 'Copiar';
+                    copyBtn.onclick = () => {
+                        navigator.clipboard.writeText(codeText);
+                        copyBtn.innerText = '¡Copiado!';
+                        setTimeout(() => copyBtn.innerText = 'Copiar', 2000);
+                    };
+                    toolbar.appendChild(copyBtn);
+
+                    if (codeText.includes('<html') || codeText.includes('<!DOCTYPE') || codeText.includes('<style>')) {
+                        const previewBtn = document.createElement('button');
+                        previewBtn.className = 'action-btn';
+                        previewBtn.style.background = '#7209b7';
+                        previewBtn.innerText = '▶ Vista Previa';
+                        previewBtn.onclick = () => abrirPreview(codeText);
+                        toolbar.appendChild(previewBtn);
+                    }
+                    pre.appendChild(toolbar);
+                });
+
+                const footer = document.createElement('div');
+                footer.className = 'msg-footer';
+                footer.innerHTML = `
+                    <button onclick="toggleVoz(this, \`${texto.replace(/[`"'#*]/g, '')}\`)">🔊 Escuchar</button>
+                    <button onclick="reaccionar(this, 'up')">👍 Útil</button>
+                    <button onclick="reaccionar(this, 'down')">👎 Inútil</button>
+                `;
+                div.appendChild(footer);
+
+            } else {
+                div.innerText = texto;
+            }
+
+            chatBox.appendChild(div);
+            if (window.hljs) hljs.highlightAll();
+            chatBox.scrollTop = chatBox.scrollHeight;
+        }
+
+        function toggleVoz(btn, textoLimpio) {
+            if (!('speechSynthesis' in window)) {
+                alert("Tu navegador no soporta síntesis de voz.");
+                return;
+            }
+
+            if (window.speechSynthesis.speaking) {
+                if (window.speechSynthesis.paused) {
+                    window.speechSynthesis.resume();
+                    btn.innerText = '⏸ Pausar';
+                } else {
+                    window.speechSynthesis.pause();
+                    btn.innerText = '▶ Reanudar';
+                }
+            } else {
+                window.speechSynthesis.cancel();
+                utteranceActual = new SpeechSynthesisUtterance(textoLimpio);
+                utteranceActual.lang = 'es-ES';
+                btn.innerText = '⏸ Pausar';
+
+                utteranceActual.onend = () => { btn.innerText = '🔊 Escuchar'; };
+                utteranceActual.onerror = () => { btn.innerText = '🔊 Escuchar'; };
+
+                window.speechSynthesis.speak(utteranceActual);
+            }
+        }
+
+        function reaccionar(btn, tipo) {
+            const padre = btn.parentElement;
+            padre.querySelectorAll('button').forEach(b => {
+                if(b.innerText.includes('Útil') || b.innerText.includes('Inútil')) b.classList.remove('active-thumb');
+            });
+            btn.classList.add('active-thumb');
+        }
+
+        function abrirPreview(codigoHtml) {
+            const modal = document.getElementById('modal-preview');
+            const iframe = document.getElementById('preview-iframe');
+            modal.style.display = 'flex';
+            const doc = iframe.contentDocument || iframe.contentWindow.document;
+            doc.open();
+            doc.write(codigoHtml);
+            doc.close();
+        }
+
+        function cerrarPreview() {
+            document.getElementById('modal-preview').style.display = 'none';
+        }
+
+        function enviarMensaje(event) {
+            if (event) event.preventDefault();
+            const input = document.getElementById('user-input');
+            const mensaje = input.value.trim();
+            if (!mensaje || !usuarioActual) return;
+
+            if (!chatActualId) {
+                crearNuevoChat();
+                setTimeout(() => enviarMensaje(event), 300);
+                return;
+            }
+
+            renderizarMensaje('user', mensaje);
+            input.value = '';
+
+            const chatBox = document.getElementById('chat-messages');
+            const loadingId = 'loading-' + Date.now();
+            const loadingDiv = document.createElement('div');
+            loadingDiv.className = 'message model-message';
+            loadingDiv.id = loadingId;
+            loadingDiv.innerText = 'VERSO AI está pensando...';
+            chatBox.appendChild(loadingDiv);
+            chatBox.scrollTop = chatBox.scrollHeight;
+
+            fetch('/api/chat', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    user_id: usuarioActual,
+                    chat_id: chatActualId,
+                    mensaje: mensaje,
+                    juego: juegoActivo,
+                    modo: modoActivo,
+                    system_prompt: systemPromptActual
+                })
+            })
+            .then(res => res.json())
+            .then(data => {
+                const loadingElement = document.getElementById(loadingId);
+                if (loadingElement) loadingElement.remove();
+
+                renderizarMensaje('model', data.respuesta);
+                if (data.nuevo_titulo) cargarListaChats();
+            })
+            .catch(() => {
+                const loadingElement = document.getElementById(loadingId);
+                if (loadingElement) loadingElement.innerText = "⚡ ¡Vaya! Error de conexión con el servidor. Inténtalo de nuevo.";
+            });
+        }
+    </script>
+</body>
+</html>
