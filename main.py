@@ -66,7 +66,7 @@ def borrar_chat():
 
 @app.route("/api/importar_chats", methods=["POST"])
 def importar_chats():
-    """Endpoint agregado para evitar el error al importar archivos de chat exportados."""
+    """Endpoint para importar archivos de chat exportados (.md o .json)."""
     try:
         data = request.json or {}
         user_id = data.get("user_id", "VERSO")
@@ -76,12 +76,10 @@ def importar_chats():
             titulo = chat_data.get("titulo", "Chat Importado")
             mensajes = chat_data.get("mensajes", [])
             
-            # Crear el nuevo chat en Firebase
             nuevo_chat_obj = firebase_db.crear_nuevo_chat(user_id, titulo, "Minecraft")
             nuevo_chat_id = nuevo_chat_obj.get("chat_id") or nuevo_chat_obj.get("id")
 
             if nuevo_chat_id:
-                # Insertar los mensajes uno por uno en el nuevo chat
                 for m in mensajes:
                     rol = m.get("rol", "user")
                     texto = m.get("texto", "")
@@ -101,7 +99,7 @@ def chat():
         user_id = data.get("user_id")
         chat_id = data.get("chat_id")
         mensaje_user = data.get("mensaje")
-        imagen_base64 = data.get("imagen_base64")  # Recibe archivo/imagen en base64
+        imagen_base64 = data.get("imagen_base64")  # Recibe archivo o imagen en base64
         modo = data.get("modo", "Gaming")
         juego = data.get("juego", "Minecraft")
         system_prompt = data.get(
@@ -110,23 +108,6 @@ def chat():
 
         if not user_id or not chat_id or not mensaje_user:
             return jsonify({"respuesta": "Faltan datos obligatorios."}), 400
-
-        # Procesar archivo adjunto en Base64 si viene incluido
-        contenido_archivo = ""
-        if imagen_base64:
-            try:
-                bytes_decodificados = base64.b64decode(imagen_base64)
-                contenido_archivo = bytes_decodificados.decode('utf-8', errors='ignore')
-            except Exception:
-                contenido_archivo = "[Archivo binario o imagen adjunta]"
-
-        # Construir el mensaje que se enviará a la IA con el contenido del archivo si aplica
-        if contenido_archivo and contenido_archivo != "[Archivo binario o imagen adjunta]":
-            mensaje_con_archivo = f"{mensaje_user}\n\n--- CONTENIDO DEL ARCHIVO ADJUNTO ---\n{contenido_archivo}"
-        elif imagen_base64:
-            mensaje_con_archivo = f"{mensaje_user} [El usuario adjuntó una imagen/archivo binario]"
-        else:
-            mensaje_con_archivo = mensaje_user
 
         # 1. Guardar el mensaje original del usuario en Firebase
         firebase_db.guardar_mensaje(user_id, chat_id, "user", mensaje_user)
@@ -146,7 +127,7 @@ REGLA IMPORTANTE: Entiendes el humor, la carrilla y la confianza típica entre a
         """
         mensajes_groq.append({"role": "system", "content": system_instruction})
 
-        # Añadir historial reciente (últimos 10 mensajes)
+        # Añadir historial reciente (últimos 10 mensajes en texto plano para mantener contexto)
         for m in historial_db[-11:-1]:
             rol = "user" if m["rol"] == "user" else "assistant"
             texto_hist = (
@@ -154,7 +135,7 @@ REGLA IMPORTANTE: Entiendes el humor, la carrilla y la confianza típica entre a
             )
             mensajes_groq.append({"role": rol, "content": texto_hist})
 
-        # 3. Filtro inteligente para el mensaje actual
+        # 3. Filtro inteligente de palabras
         def limpiar_texto_para_ia(texto):
             t = texto.lower()
             if "gays" in t or "gay" in t:
@@ -163,17 +144,42 @@ REGLA IMPORTANTE: Entiendes el humor, la carrilla y la confianza típica entre a
                 )
             return t
 
-        mensaje_procesado = limpiar_texto_para_ia(mensaje_con_archivo)
-        mensajes_groq.append({"role": "user", "content": mensaje_procesado})
+        mensaje_procesado = limpiar_texto_para_ia(mensaje_user)
 
-        # 4. Llamada a la API de Groq con reintento automático si hay saturación (429)
+        # 4. Construir contenido del mensaje actual (Soporte para Imagen o Texto/Código)
+        if imagen_base64:
+            # Determinamos si es un archivo de texto/código o una imagen real por su contenido o tamaño aproximado
+            try:
+                bytes_decodificados = base64.b64decode(imagen_base64)
+                # Intentamos decodificar como texto plano (para scripts .py, .js, .txt, .html)
+                contenido_texto = bytes_decodificados.decode('utf-8')
+                
+                # Si pasa a texto sin problema, se lo mandamos como texto adjunto
+                mensaje_final_content = f"{mensaje_procesado}\n\n--- CONTENIDO DEL ARCHIVO ---\n{contenido_texto}"
+                mensajes_groq.append({"role": "user", "content": mensaje_final_content})
+            except Exception:
+                # Si falla al decodificar texto, asumimos que es una imagen real (PNG/JPG) y usamos visión de Groq
+                mensaje_groq_multimodal = [
+                    {"type": "text", "text": mensaje_procesado},
+                    {
+                        "type": "image_url",
+                        "image_url": {
+                            "url": f"data:image/jpeg;base64,{imagen_base64}"
+                        }
+                    }
+                ]
+                mensajes_groq.append({"role": "user", "content": mensaje_groq_multimodal})
+        else:
+            mensajes_groq.append({"role": "user", "content": mensaje_procesado})
+
+        # 5. Llamada a la API de Groq usando un modelo con soporte multimodal/visión (`qwen/qwen3.6-27b`)
         headers = {
             "Authorization": f"Bearer {GROQ_API_KEY}",
             "Content-Type": "application/json",
         }
 
         payload = {
-            "model": "openai/gpt-oss-20b",
+            "model": "qwen/qwen3.6-27b",  # Modelo de Groq rápido y con soporte completo de visión e imágenes
             "messages": mensajes_groq,
             "temperature": 0.8,
             "max_tokens": 4096,
@@ -203,10 +209,10 @@ REGLA IMPORTANTE: Entiendes el humor, la carrilla y la confianza típica entre a
                     "el comando, crack. ⚡"
                 )
 
-        # 5. Guardar respuesta del modelo en Firebase
+        # 6. Guardar respuesta del modelo en Firebase
         firebase_db.guardar_mensaje(user_id, chat_id, "model", respuesta_bot)
 
-        # 6. Generar título automático si es necesario
+        # 7. Generar título automático si es necesario
         nuevo_titulo = None
         if len(historial_db) <= 2:
             nuevo_titulo = mensaje_user[:20] + (
