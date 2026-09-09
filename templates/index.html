@@ -464,7 +464,7 @@
         <input type="text" class="search-chats" id="search-input" placeholder="🔍 Buscar en chats..." oninput="filtrarChats()">
         <button class="btn-action-sidebar" onclick="crearNuevoChat()">+ Nuevo Chat</button>
         <button class="btn-action-sidebar" onclick="document.getElementById('import-file-input').click()">📁 Importar Chats</button>
-        <input type="file" id="import-file-input" style="display: none;" accept=".json,.md" onchange="importarChats(event)">
+        <input type="file" id="import-file-input" style="display: none;" accept=".json,.md,.txt" onchange="importarChats(event)">
 
         <div class="nav-section">
             <span class="nav-title">CHATS GUARDADOS</span>
@@ -749,15 +749,32 @@
             reader.onload = (e) => {
                 try {
                     const contenido = e.target.result;
-                    let payload;
+                    let payloadChats = [];
+
                     if (file.name.endsWith('.json')) {
-                        payload = JSON.parse(contenido);
+                        const parsed = JSON.parse(contenido);
+                        payloadChats = parsed.chats || [parsed];
                     } else {
-                        // Importación básica desde texto/markdown si aplica
-                        payload = {
-                            user_id: usuarioActual,
-                            chats: [{ titulo: file.name, mensajes: [{ rol: 'user', texto: contenido }] }]
-                        };
+                        let mensajes = [];
+                        let partes = contenido.split('---');
+                        partes.forEach(parte => {
+                            if (parte.includes('**[USER]**')) {
+                                let texto = parte.replace('**[USER]**:', '').trim();
+                                if(texto) mensajes.push({ rol: 'user', texto: texto });
+                            } else if (parte.includes('**[MODEL]**')) {
+                                let texto = parte.replace('**[MODEL]**:', '').trim();
+                                if(texto) mensajes.push({ rol: 'model', texto: texto });
+                            }
+                        });
+
+                        if (mensajes.length === 0) {
+                            mensajes.push({ rol: 'user', texto: contenido });
+                        }
+
+                        payloadChats = [{
+                            titulo: file.name.replace(/\.[^/.]+$/, ""),
+                            mensajes: mensajes
+                        }];
                     }
 
                     fetch('/api/importar_chats', {
@@ -765,16 +782,17 @@
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({
                             user_id: usuarioActual,
-                            chats: payload.chats || [payload]
+                            chats: payloadChats
                         })
                     })
                     .then(res => res.json())
                     .then(() => {
-                        alert("¡Chats importados con éxito!");
+                        alert("¡Chat importado con éxito!");
                         cargarListaChats();
-                    });
+                    })
+                    .catch(() => alert("Error al sincronizar la importación con el servidor."));
                 } catch(err) {
-                    alert("Error al parsear el archivo de importación.");
+                    alert("El archivo no tiene un formato válido para importar.");
                 }
             };
             reader.readAsText(file);
@@ -914,7 +932,7 @@
             const payloadData = {
                 user_id: usuarioActual,
                 chat_id: chatActualId,
-                mensaje: mensaje,
+                mensaje: mensaje || "Analiza este archivo adjunto.",
                 juego: juegoActivo,
                 modo: modoActivo,
                 system_prompt: systemPromptActual
@@ -922,7 +940,7 @@
 
             if (archivoBase64Actual) {
                 payloadData.imagen_base64 = archivoBase64Actual;
-                removerArchivo(); // Limpiar después de enviar
+                removerArchivo();
             }
 
             fetch('/api/chat', {
@@ -935,12 +953,16 @@
                 const loadingElement = document.getElementById(loadingId);
                 if (loadingElement) loadingElement.remove();
 
-                renderizarMensaje('model', data.respuesta);
+                if (data.error) {
+                    renderizarMensaje('model', `⚡ Error del servidor: ${data.error}`);
+                } else {
+                    renderizarMensaje('model', data.respuesta);
+                }
                 if (data.nuevo_titulo) cargarListaChats();
             })
             .catch(() => {
                 const loadingElement = document.getElementById(loadingId);
-                if (loadingElement) loadingElement.innerText = "⚡ ¡Vaya! Error de conexión con el servidor. Inténtalo de nuevo.";
+                if (loadingElement) loadingElement.innerText = "⚡ ¡Vaya! Error de conexión con el servidor.";
             });
         }
     </script>
