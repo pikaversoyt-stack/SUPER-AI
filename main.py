@@ -1,4 +1,4 @@
-from flask import Flask, jsonify, render_template, request
+}from flask import Flask, jsonify, render_template, request
 import os
 import requests
 import time
@@ -66,6 +66,7 @@ def borrar_chat():
 
 @app.route("/api/importar_chats", methods=["POST"])
 def importar_chats():
+    """Endpoint para importar archivos de chat exportados (.md o .json)."""
     try:
         data = request.json or {}
         user_id = data.get("user_id", "VERSO")
@@ -108,23 +109,17 @@ def chat():
         if not user_id or not chat_id or not mensaje_user:
             return jsonify({"respuesta": "Faltan datos obligatorios."}), 400
 
-        # Procesamiento limpio de adjuntos (archivos de texto, código o aviso visual)
-        texto_adjunto = ""
+        # Procesamiento seguro de archivos de código o texto adjuntos
+        mensaje_final_ia = mensaje_user
         if imagen_base64:
             try:
                 bytes_decodificados = base64.b64decode(imagen_base64)
-                texto_adjunto = bytes_decodificados.decode('utf-8', errors='ignore')
+                texto_adjunto = bytes_decodificados.decode('utf-8')
+                mensaje_final_ia = f"{mensaje_user}\n\n--- CONTENIDO DEL ARCHIVO ---\n{texto_adjunto}"
             except Exception:
-                texto_adjunto = "[Imagen o archivo binario adjunto]"
+                mensaje_final_ia = f"{mensaje_user}\n[El usuario adjuntó una imagen o archivo binario]"
 
-        if texto_adjunto and texto_adjunto != "[Imagen o archivo binario adjunto]":
-            mensaje_final_ia = f"{mensaje_user}\n\n--- CONTENIDO DEL ARCHIVO ADJUNTO ---\n{texto_adjunto}"
-        elif imagen_base64:
-            mensaje_final_ia = f"{mensaje_user}\n[El usuario ha adjuntado una imagen o archivo visual]"
-        else:
-            mensaje_final_ia = mensaje_user
-
-        # 1. Guardar siempre el mensaje original del usuario en Firebase de inmediato
+        # 1. Guardar el mensaje del usuario en Firebase de inmediato
         firebase_db.guardar_mensaje(user_id, chat_id, "user", mensaje_user)
 
         # 2. Obtener perfil e historial reciente
@@ -157,14 +152,14 @@ REGLA IMPORTANTE: Entiendes el humor, la carrilla y la confianza típica entre a
 
         mensajes_groq.append({"role": "user", "content": limpiar_texto(mensaje_final_ia)})
 
-        # 3. Llamada a la API de Groq con el modelo estable
+        # 3. Llamada a la API de Groq
         headers = {
             "Authorization": f"Bearer {GROQ_API_KEY}",
             "Content-Type": "application/json",
         }
 
         payload = {
-            "model": "openai/gpt-oss-20b",  # Modelo estable, rápido y sin bloqueos raros en Groq
+            "model": "openai/gpt-oss-20b",
             "messages": mensajes_groq,
             "temperature": 0.8,
             "max_tokens": 4096,
@@ -193,10 +188,10 @@ REGLA IMPORTANTE: Entiendes el humor, la carrilla y la confianza típica entre a
                     "Vuelve a enviar tu mensaje en un segundo, crack. ⚡"
                 )
 
-        # 4. Guardar respuesta del modelo en Firebase obligatoriamente
+        # 4. Guardar respuesta del modelo en Firebase
         firebase_db.guardar_mensaje(user_id, chat_id, "model", respuesta_bot)
 
-        # 5. Generar título automático si es el inicio del chat
+        # 5. Generar título automático si es necesario
         nuevo_titulo = None
         if len(historial_db) <= 2:
             nuevo_titulo = mensaje_user[:20] + ("..." if len(mensaje_user) > 20 else "")
