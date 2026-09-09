@@ -121,7 +121,7 @@
             width: 100%;
         }
 
-        .btn-new-chat {
+        .btn-action-sidebar {
             background: var(--bg-primary);
             border: 1px solid var(--border-color);
             color: #fff;
@@ -131,8 +131,9 @@
             font-weight: 500;
             text-align: left;
             transition: border-color 0.2s;
+            font-size: 0.9rem;
         }
-        .btn-new-chat:hover { border-color: var(--accent-purple); }
+        .btn-action-sidebar:hover { border-color: var(--accent-purple); }
 
         .nav-section {
             display: flex;
@@ -223,7 +224,6 @@
             border-color: var(--accent-purple);
         }
 
-        /* Selector rápido de Personalidad en Topbar */
         .sysprompt-select {
             background: var(--bg-primary);
             border: 1px solid var(--border-color);
@@ -373,6 +373,7 @@
             border-top: 1px solid var(--border-color);
             display: flex;
             gap: 10px;
+            align-items: center;
         }
 
         .input-area input {
@@ -385,22 +386,49 @@
             outline: none;
         }
 
+        .btn-icon-input {
+            background: var(--bg-primary);
+            border: 1px solid var(--border-color);
+            color: var(--text-muted);
+            padding: 10px 12px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 1rem;
+            transition: color 0.2s, border-color 0.2s;
+        }
+        .btn-icon-input:hover { color: #fff; border-color: var(--accent-purple); }
+
         .btn-send {
             background: var(--accent-purple);
             border: none;
             color: #fff;
             width: 45px;
+            height: 45px;
             border-radius: 8px;
             cursor: pointer;
             font-size: 1.1rem;
             transition: background 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
         }
         .btn-send:hover { background: var(--accent-hover); }
+
+        #file-preview-banner {
+            display: none;
+            background: var(--bg-primary);
+            padding: 5px 15px;
+            font-size: 0.8rem;
+            color: var(--accent-purple);
+            border-top: 1px solid var(--border-color);
+            align-items: center;
+            justify-content: space-between;
+        }
     </style>
 </head>
 <body>
 
-    <!-- Modal Login (Solo Usuario, Juego y Hobby) -->
+    <!-- Modal Login -->
     <div class="modal-overlay" id="modal-login">
         <div class="modal-card">
             <h2>VERSO AI</h2>
@@ -434,7 +462,9 @@
     <div class="sidebar">
         <div class="logo">VERSO <span>AI</span></div>
         <input type="text" class="search-chats" id="search-input" placeholder="🔍 Buscar en chats..." oninput="filtrarChats()">
-        <button class="btn-new-chat" onclick="crearNuevoChat()">+ Nuevo Chat</button>
+        <button class="btn-action-sidebar" onclick="crearNuevoChat()">+ Nuevo Chat</button>
+        <button class="btn-action-sidebar" onclick="document.getElementById('import-file-input').click()">📁 Importar Chats</button>
+        <input type="file" id="import-file-input" style="display: none;" accept=".json,.md" onchange="importarChats(event)">
 
         <div class="nav-section">
             <span class="nav-title">CHATS GUARDADOS</span>
@@ -449,7 +479,6 @@
                 <button class="mode-btn" id="mode-Dev" onclick="setModo('Dev')">💻 Dev</button>
                 <button class="mode-btn" id="mode-Creativo" onclick="setModo('Creativo')">⚡ Creativo</button>
                 
-                <!-- Selector rápido de Personalidad (System Prompt) -->
                 <select class="sysprompt-select" id="select-sysprompt" onchange="cambiarSystemPrompt(this.value)" title="Personalidad de la IA">
                     <option value="Asistente experto, directo y técnico.">🤖 Experto Técnico</option>
                     <option value="Amigable, entusiasta, gamer y creativo.">🎮 Gamer & Creativo</option>
@@ -457,7 +486,6 @@
                     <option value="Creativo minimalista enfocado en diseño UI/UX y estética.">✨ Diseñador UI/UX</option>
                 </select>
 
-                <!-- Selector de Temas Visuales -->
                 <div class="theme-picker">
                     <div class="theme-circle" style="background: #7209b7;" onclick="cambiarTema('purple')" title="Morado"></div>
                     <div class="theme-circle" style="background: #00f5d4;" onclick="cambiarTema('neon')" title="Neón"></div>
@@ -474,8 +502,15 @@
 
         <div class="chat-container" id="chat-messages"></div>
 
+        <div id="file-preview-banner">
+            <span id="file-name-display">📎 Archivo adjunto</span>
+            <button class="btn-icon" onclick="removerArchivo()">✕ Quitar</button>
+        </div>
+
         <div class="input-area">
-            <input type="text" id="user-input" placeholder="Escribe tu consulta para VERSO AI..." onkeypress="if(event.key==='Enter') enviarMensaje(event)">
+            <input type="file" id="media-input" style="display: none;" accept="image/*,.txt,.py,.js,.html,.css,.json" onchange="manejarSeleccionArchivo(event)">
+            <button class="btn-icon-input" onclick="document.getElementById('media-input').click()" title="Subir imagen o archivo">📎</button>
+            <input type="text" id="user-input" placeholder="Escribe tu consulta o adjunta un archivo..." onkeypress="if(event.key==='Enter') enviarMensaje(event)">
             <button class="btn-send" onclick="enviarMensaje(event)">➔</button>
         </div>
     </div>
@@ -489,6 +524,7 @@
         let modoActivo = "Gaming";
         let listaChatsCache = {};
         let utteranceActual = null;
+        let archivoBase64Actual = null;
 
         window.addEventListener('DOMContentLoaded', () => {
             const temaGuardado = localStorage.getItem('verso_theme') || 'purple';
@@ -650,9 +686,10 @@
             })
             .then(res => res.json())
             .then(chat => {
-                chatActualId = chat.id;
+                const newId = chat.chat_id || chat.id;
+                chatActualId = newId;
                 cargarListaChats();
-                seleccionarChat(chat.id);
+                seleccionarChat(newId);
             });
         }
 
@@ -685,13 +722,70 @@
             });
         }
 
+        function manejarSeleccionArchivo(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onloadend = () => {
+                archivoBase64Actual = reader.result.split(',')[1];
+                document.getElementById('file-name-display').innerText = `📎 ${file.name}`;
+                document.getElementById('file-preview-banner').style.display = 'flex';
+            };
+            reader.readAsDataURL(file);
+        }
+
+        function removerArchivo() {
+            archivoBase64Actual = null;
+            document.getElementById('media-input').value = '';
+            document.getElementById('file-preview-banner').style.display = 'none';
+        }
+
+        function importarChats(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                try {
+                    const contenido = e.target.result;
+                    let payload;
+                    if (file.name.endsWith('.json')) {
+                        payload = JSON.parse(contenido);
+                    } else {
+                        // Importación básica desde texto/markdown si aplica
+                        payload = {
+                            user_id: usuarioActual,
+                            chats: [{ titulo: file.name, mensajes: [{ rol: 'user', texto: contenido }] }]
+                        };
+                    }
+
+                    fetch('/api/importar_chats', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            user_id: usuarioActual,
+                            chats: payload.chats || [payload]
+                        })
+                    })
+                    .then(res => res.json())
+                    .then(() => {
+                        alert("¡Chats importados con éxito!");
+                        cargarListaChats();
+                    });
+                } catch(err) {
+                    alert("Error al parsear el archivo de importación.");
+                }
+            };
+            reader.readAsText(file);
+        }
+
         function renderizarMensaje(tipo, texto) {
             const chatBox = document.getElementById('chat-messages');
             const div = document.createElement('div');
             div.className = `message ${tipo === 'user' ? 'user-message' : 'model-message'}`;
 
             if (tipo === 'model') {
-                // Filtro extra de seguridad en el cliente por si llega un error 429 técnico de la API
                 if (texto.includes('429') || texto.toLowerCase().includes('quota exceeded')) {
                     texto = "⚡ ¡Vaya! Me he quedado sin energía momentáneamente (límite de la cuota gratuita de la API alcanzado). Espera unos segundos y vuelve a enviarme un mensaje.";
                 }
@@ -699,7 +793,9 @@
                 div.innerHTML = marked.parse(texto);
 
                 div.querySelectorAll('pre').forEach(pre => {
-                    const codeText = pre.querySelector('code').innerText;
+                    const codeBlock = pre.querySelector('code');
+                    if (!codeBlock) return;
+                    const codeText = codeBlock.innerText;
                     const toolbar = document.createElement('div');
                     toolbar.className = 'code-toolbar';
 
@@ -795,7 +891,7 @@
             if (event) event.preventDefault();
             const input = document.getElementById('user-input');
             const mensaje = input.value.trim();
-            if (!mensaje || !usuarioActual) return;
+            if ((!mensaje && !archivoBase64Actual) || !usuarioActual) return;
 
             if (!chatActualId) {
                 crearNuevoChat();
@@ -803,7 +899,7 @@
                 return;
             }
 
-            renderizarMensaje('user', mensaje);
+            renderizarMensaje('user', mensaje || "[Archivo adjunto]");
             input.value = '';
 
             const chatBox = document.getElementById('chat-messages');
@@ -811,21 +907,28 @@
             const loadingDiv = document.createElement('div');
             loadingDiv.className = 'message model-message';
             loadingDiv.id = loadingId;
-            loadingDiv.innerText = 'VERSO AI está pensando...';
+            loadingDiv.innerText = 'VERSO AI está analizando...';
             chatBox.appendChild(loadingDiv);
             chatBox.scrollTop = chatBox.scrollHeight;
+
+            const payloadData = {
+                user_id: usuarioActual,
+                chat_id: chatActualId,
+                mensaje: mensaje,
+                juego: juegoActivo,
+                modo: modoActivo,
+                system_prompt: systemPromptActual
+            };
+
+            if (archivoBase64Actual) {
+                payloadData.imagen_base64 = archivoBase64Actual;
+                removerArchivo(); // Limpiar después de enviar
+            }
 
             fetch('/api/chat', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    user_id: usuarioActual,
-                    chat_id: chatActualId,
-                    mensaje: mensaje,
-                    juego: juegoActivo,
-                    modo: modoActivo,
-                    system_prompt: systemPromptActual
-                })
+                body: JSON.stringify(payloadData)
             })
             .then(res => res.json())
             .then(data => {
