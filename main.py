@@ -7,7 +7,7 @@ import firebase_db
 app = Flask(__name__)
 
 # Clave de API de Groq configurada directamente
-GROQ_API_KEY = "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"
+GROQ_API_KEY = "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"
 
 
 @app.route("/")
