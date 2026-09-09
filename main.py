@@ -3,6 +3,7 @@ import os
 import requests
 import time
 import firebase_db
+import base64
 
 app = Flask(__name__)
 
@@ -100,7 +101,7 @@ def chat():
         user_id = data.get("user_id")
         chat_id = data.get("chat_id")
         mensaje_user = data.get("mensaje")
-        imagen_base64 = data.get("imagen_base64") # Recibe imagen opcional si se adjunta
+        imagen_base64 = data.get("imagen_base64")  # Recibe archivo/imagen en base64
         modo = data.get("modo", "Gaming")
         juego = data.get("juego", "Minecraft")
         system_prompt = data.get(
@@ -110,11 +111,24 @@ def chat():
         if not user_id or not chat_id or not mensaje_user:
             return jsonify({"respuesta": "Faltan datos obligatorios."}), 400
 
-        # Si viene un archivo adjunto en Base64, lo adjuntamos visualmente al texto para que la IA lo sepa
+        # Procesar archivo adjunto en Base64 si viene incluido
+        contenido_archivo = ""
         if imagen_base64:
-            mensaje_user = f"[Archivo/Imagen adjunto] {mensaje_user}"
+            try:
+                bytes_decodificados = base64.b64decode(imagen_base64)
+                contenido_archivo = bytes_decodificados.decode('utf-8', errors='ignore')
+            except Exception:
+                contenido_archivo = "[Archivo binario o imagen adjunta]"
 
-        # 1. Guardar el mensaje del usuario en Firebase
+        # Construir el mensaje que se enviará a la IA con el contenido del archivo si aplica
+        if contenido_archivo and contenido_archivo != "[Archivo binario o imagen adjunta]":
+            mensaje_con_archivo = f"{mensaje_user}\n\n--- CONTENIDO DEL ARCHIVO ADJUNTO ---\n{contenido_archivo}"
+        elif imagen_base64:
+            mensaje_con_archivo = f"{mensaje_user} [El usuario adjuntó una imagen/archivo binario]"
+        else:
+            mensaje_con_archivo = mensaje_user
+
+        # 1. Guardar el mensaje original del usuario en Firebase
         firebase_db.guardar_mensaje(user_id, chat_id, "user", mensaje_user)
 
         # 2. Obtener perfil e historial reciente
@@ -149,7 +163,7 @@ REGLA IMPORTANTE: Entiendes el humor, la carrilla y la confianza típica entre a
                 )
             return t
 
-        mensaje_procesado = limpiar_texto_para_ia(mensaje_user)
+        mensaje_procesado = limpiar_texto_para_ia(mensaje_con_archivo)
         mensajes_groq.append({"role": "user", "content": mensaje_procesado})
 
         # 4. Llamada a la API de Groq con reintento automático si hay saturación (429)
